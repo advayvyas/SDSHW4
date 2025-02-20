@@ -1,0 +1,199 @@
+---
+title: 'Homework #4'
+author: "Advay Vyas"
+date: 2/20/25
+output:
+  pdf_document:
+    toc: true
+urlcolor: blue
+linkcolor: red
+---
+
+```{r global_options, echo=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=6, fig.align = "center", warning=FALSE, echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+------------------------------------------------------------------------
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+# loading libraries
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(sas7bdat)
+library(rvest)
+library(stringr)
+library(boot)
+library(mosaic)
+```
+
+# Introduction
+
+I'm Advay Vyas, EID: av37899, and this is my submission for SDS 315 Statistical Thinking Homework #4. The GitHub repository for my code is at this [link](https://github.com/advayvyas/SDSHW4).
+
+\newpage
+
+# Problem 1
+```{r, cache=TRUE}
+sim_sec = do(100000)*nflip(n=2021, p=0.024)
+```
+
+## Null Hypothesis
+The null hypothesis is that the SEC flags securities trades from the Iron Bank at the same 2.4% baseline rates as other traders over the long run.
+
+## Test Statistic
+The test statistic used to measure the null hypothesis will be the number of flagged trades. In the data, 70 of 2021 trades by Iron Bank employees were flagged by the detection algorithm. 
+
+The graph below has a vertical line right before the bin of 70 trades and the bins for the histogram turn red after that line. The p-value thus represents the probability of trades that are at or above the line.
+
+```{r}
+p_sec = round(sum(sim_sec >= 70)/100000,4)
+
+ggplot(sim_sec) + geom_histogram(aes(x=nflip, fill = (nflip < 70)), col = 'black' , binwidth=1) + geom_vline(xintercept = 69.5) + theme(legend.position="none") + labs(x="Flagged trades", y="Frequency", title = "Distribution of flagged trades out of 2021 total trades")
+```
+## Analysis
+
+The p-value for this problem is p = `r p_sec`. The p-value seems to be small and seems to disprove the null hypothesis that the Iron Bank flags will fit into the long run flags for Iron Bank. Therefore, I'd look into Iron Bank's securities trades further to get some more data because 70 flagged trades is moderately to highly unlikely.
+
+# Problem 2
+```{r, cache=TRUE}
+sim_bites = do(100000)*nflip(n=50, p=0.03)
+```
+
+## Null Hypothesis
+The null hypothesis is that the Health Department cites Gourmet Bites branches in the city for health code violations at a baseline rate of 3% of all restaurant inspections.
+
+## Test Statistic
+The test statistic used to measure the null hypothesis will be the number of cited Gourmet Bites branches. In the data, 8 of 50 inspections of Gourmet Bites were reported for health code violations.
+
+The graph below has a vertical line right before the bin of 8 inspections and the bins for the histogram turn red after that line. The p-value thus represents the probability of inspections that are at or above the line.
+
+```{r}
+p_bites = round(sum(sim_bites >= 8)/100000,4)
+
+ggplot(sim_bites) + geom_histogram(aes(x=nflip, fill = (nflip < 8)), col = 'black' , binwidth=1) + geom_vline(xintercept = 8) + theme(legend.position="none") + labs(x="Flagged trades", y="Frequency", title = "Distribution of flagged trades out of 2021 total trades")
+```
+## Analysis
+
+The p-value for this problem is p = `r p_bites`. The p-value seems to be significantly small and seems to disprove the null hypothesis that the Gourmet Bites health code violations are a part of its long run violations and just a simple statistical occurrence. Therefore, I'd carefully look into Gourmet Bites' health code violations further to get some more data because 8 out of 50 branches cited for health code violation is extremely unlikely.
+
+\newpage
+
+# Problem 3
+```{r}
+expected_dist = c(Group1 = 0.3, Group2 = 0.25, Group3 = 0.2, Group4 = 0.15, Group5 = 0.1)
+observed_counts = c(Group1 = 85, Group2 = 56, Group3 = 59, Group4 = 27, Group5 = 13)
+
+num_jurors = 20 * 12
+
+chi_squared_statistic = function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+```
+
+```{r, cache=TRUE}
+sim_jury = do(100000)*{
+  simulated_counts = rmultinom(1, num_jurors, expected_dist)
+  c(chi2 = chi_squared_statistic(simulated_counts, num_jurors*expected_dist)) 
+}
+```
+
+```{r}
+observed_chi = chi_squared_statistic(observed_counts, num_jurors*expected_dist)
+```
+
+## Null Hypothesis
+The null hypothesis is that a county's juries are chosen from potential jurors without external bias (that is, bias that is not automatic exemption or excusable for hardship). The distribution for the jury should therefore match the racial distribution of the county.
+
+## Test Statistic
+The test statistic used to measure the null hypothesis will be the chi-squared goodness-of-fit tests for distributions of the juries. In the data, the counts for 20 trials (12 members each) were given. We will compute the chi-squared goodness-of-fit test for this distribution compared to the county's racial distribution.
+
+The graph below has a vertical line right before the bin of `r round(observed_chi,3)` inspections and the bins for the histogram turn red after that line. The p-value thus represents the probability of inspections that are at or above the line.
+
+```{r}
+p_jury = round(sum(sim_jury >= observed_chi)/100000,4)
+
+ggplot(sim_jury) + geom_histogram(aes(x=chi2, fill = (chi2 < observed_chi)), binwidth=1, col='black') + geom_vline(xintercept = observed_chi + 0.1) + theme(legend.position="none") + labs(x="Chi-squared goodness-of-fit value", y="Frequency", title = "Distribution of chi-squared tests for jury distributions")
+```
+
+## Analysis
+
+The p-value for this problem is p = `r p_jury`. The p-value seems to be small and yet seems to disprove the null hypothesis that the jury selections are unbiased. Therefore, I'd look further into the jury selection process because only 1.5% of distributions are equally or more "distant" from the racial distribution of the county. This might suggest systemic bias in jury selection, but the p-value suggests that a closer look is needed. Another possible explanation is that different ethnic groups may have stronger bias and easily dismissed, but that doesn't seem very likely.
+
+# Problem 4
+```{r, cache=TRUE}
+sentences = readLines("brown_sentences.txt")
+sentenceData <- data.frame(sentence = sentences)
+
+letterFreq = read.csv("letter_frequencies.csv")
+
+calculate_chi_squared = function(sentence) {
+  
+  # Ensure letter frequencies are normalized and sum to 1
+  letterFreq$Probability = letterFreq$Probability / sum(letterFreq$Probability)
+  
+  # Remove non-letters and convert to uppercase
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+  
+  # Count the occurrences of each letter in the sentence
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = letterFreq$Letter))
+  
+  # Calculate expected counts
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * letterFreq$Probability
+  
+  # Chi-squared statistic
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 /  expected_counts)
+  
+  return(chi_squared_stat)
+}
+```
+## Part A
+```{r, cache=TRUE}
+sim_sentences = data.frame(sapply(sentenceData$sentence, calculate_chi_squared))
+colnames(sim_sentences) = c("chi2")
+```
+
+The histogram below displays the distribution of sentences from the Brown Corpus and their accompanying chi-squared goodness-of-fit tests to letter frequencies from Project Gutenberg texts.
+
+```{r}
+ggplot(sim_sentences) + geom_histogram(aes(x=chi2), fill = 'skyblue', binwidth=2, col='black') + labs(x="Chi-squared goodness-of-fit value", y="Frequency", title = "Distribution of chi-squared tests for sentences")
+
+```
+\newpage
+
+## Part B
+```{r, cache=TRUE}
+sample_sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations.")
+```
+
+```{r}
+p_sentence = list()
+
+for (i in 1:length(sample_sentences)) {
+  p_sentence[i] = round(sum(sim_sentences >= calculate_chi_squared(sample_sentences[i]))/length(sentenceData$sentence),3)
+}
+
+p_table = data.frame(
+  sentence = sample_sentences,
+  p_value = unlist(p_sentence)
+)
+
+knitr::kable(p_table, col.names = c("Sentence", "P-value"), caption = "Sentences and their p-value of following the \"typical\" English distribiution")
+```
+The sentence that has been watermarked by the LLM is sentence 6 due to its extremely low p-value relative to the rest of the sentences. While p-values for the other sentences have at least one digit in the hundredths place, the 6th sentence has 0 - it is much less plausible to be a human-generated sentence. 
+
+
+
+
