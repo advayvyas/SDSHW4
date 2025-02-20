@@ -71,7 +71,7 @@ The graph below has a vertical line right before the bin of 8 inspections and th
 ```{r}
 p_bites = round(sum(sim_bites >= 8)/100000,4)
 
-ggplot(sim_bites) + geom_histogram(aes(x=nflip, fill = (nflip < 8)), col = 'black' , binwidth=1) + geom_vline(xintercept = 8) + theme(legend.position="none") + labs(x="Flagged trades", y="Frequency", title = "Distribution of flagged trades out of 2021 total trades")
+ggplot(sim_bites) + geom_histogram(aes(x=nflip, fill = (nflip < 8)), col = 'black' , binwidth=1) + geom_vline(xintercept = 8) + theme(legend.position="none") + labs(x="Health code violations", y="Frequency", title = "Distribution of health code violations out of 50 total Gourmet Bites branches")
 ```
 ## Analysis
 
@@ -108,7 +108,7 @@ The null hypothesis is that a county's juries are chosen from potential jurors w
 ## Test Statistic
 The test statistic used to measure the null hypothesis will be the chi-squared goodness-of-fit tests for distributions of the juries. In the data, the counts for 20 trials (12 members each) were given. We will compute the chi-squared goodness-of-fit test for this distribution compared to the county's racial distribution.
 
-The graph below has a vertical line right before the bin of `r round(observed_chi,3)` inspections and the bins for the histogram turn red after that line. The p-value thus represents the probability of inspections that are at or above the line.
+The graph below has a vertical line right before the bin of `r round(observed_chi,3)` and the bins for the histogram turn red after that line. The p-value thus represents the probability of jury distributions that are at or above the line.
 
 ```{r}
 p_jury = round(sum(sim_jury >= observed_chi)/100000,4)
